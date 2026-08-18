@@ -1,0 +1,6 @@
+{
+  "name": "Lodu Ludo",
+  "description": "A 4-player local multiplayer Ludo board game featuring Modi, Kejriwal, Rahul, and Trump with authentic rules, animated dice, and token cutting.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
