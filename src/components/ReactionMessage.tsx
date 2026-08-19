@@ -1,6 +1,5 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Sparkles, MessageCircle } from 'lucide-react';
 import { CharacterAvatar } from './CharacterAvatar';
 import { CharacterId } from '../types';
 
@@ -18,30 +17,30 @@ export const ReactionMessage: React.FC<ReactionMessageProps> = ({
   type = 'event',
 }) => {
   return (
-    <div className="h-10 sm:h-12 w-full flex items-center justify-center px-2">
+    <div className="absolute top-12 sm:top-14 left-1/2 -translate-x-1/2 z-40 w-full max-w-sm px-3 pointer-events-none flex justify-center">
       <AnimatePresence mode="wait">
         {message && (
           <motion.div
             key={message}
-            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+            initial={{ opacity: 0, y: -8, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -10, scale: 0.95 }}
-            transition={{ duration: 0.25 }}
-            className={`max-w-md w-full px-3 py-1.5 rounded-full flex items-center justify-center gap-2 shadow-lg border backdrop-blur-md ${
+            exit={{ opacity: 0, y: -8, scale: 0.95 }}
+            transition={{ duration: 0.2 }}
+            className={`px-3.5 py-1.5 rounded-full flex items-center justify-center gap-2 shadow-2xl border backdrop-blur-md ${
               type === 'cut'
-                ? 'bg-rose-900/90 text-rose-100 border-rose-500/50'
+                ? 'bg-rose-950/95 text-rose-100 border-rose-500/60 shadow-rose-900/40'
                 : type === 'six'
-                ? 'bg-amber-900/90 text-amber-100 border-amber-500/50'
-                : 'bg-neutral-900/90 text-neutral-100 border-white/20'
+                ? 'bg-amber-950/95 text-amber-100 border-amber-500/60 shadow-amber-900/40'
+                : 'bg-neutral-900/95 text-neutral-100 border-white/25 shadow-black/60'
             }`}
           >
             {speakerCharacterId && (
-              <CharacterAvatar id={speakerCharacterId} size="xs" />
+              <CharacterAvatar id={speakerCharacterId} size="xs" className="w-5 h-5" />
             )}
-            
-            <div className="flex items-center gap-1.5 text-xs sm:text-sm font-semibold truncate">
+
+            <div className="flex items-center gap-1 text-[11px] sm:text-xs font-bold truncate">
               {speakerName && (
-                <span className="text-amber-300 font-bold hidden sm:inline">
+                <span className="text-amber-300 font-extrabold hidden sm:inline">
                   {speakerName}:
                 </span>
               )}
@@ -53,3 +52,4 @@ export const ReactionMessage: React.FC<ReactionMessageProps> = ({
     </div>
   );
 };
+

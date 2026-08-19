@@ -1,9 +1,11 @@
 import React from 'react';
-import { Star, Home, Crown, ArrowRight, ArrowDown, ArrowLeft, ArrowUp } from 'lucide-react';
-import { BoardCoordinate, MoveOption, Player, TokenData } from '../types';
+import { Star, Home, Crown, ArrowRight, ArrowDown, ArrowLeft, ArrowUp, Zap } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { BoardCoordinate, CaptureFeedback, MoveOption, Player, TokenData } from '../types';
 import { Token } from './Token';
 import { CharacterAvatar } from './CharacterAvatar';
-import { COLOR_CONFIG } from '../utils/ludoConstants';
+import { COLOR_CONFIG, SAFE_CELL_KEYS } from '../utils/ludoConstants';
+import { getCoordinateForToken } from '../utils/ludoLogic';
 
 interface LudoBoardProps {
   players: Player[];
@@ -15,6 +17,7 @@ interface LudoBoardProps {
     tokenId: number;
     currentCoord: BoardCoordinate;
   } | null;
+  captureFeedback?: CaptureFeedback | null;
   onTokenClick: (tokenId: number) => void;
 }
 
@@ -24,6 +27,7 @@ export const LudoBoard: React.FC<LudoBoardProps> = ({
   validMoves,
   isMoving,
   movingTokenInfo,
+  captureFeedback,
   onTokenClick,
 }) => {
   // Map all static tokens to their coordinates (row, col)
@@ -41,7 +45,7 @@ export const LudoBoard: React.FC<LudoBoardProps> = ({
         return;
       }
 
-      const coord = getStaticTokenCoord(player.id, token.id, token.step);
+      const coord = getCoordinateForToken(player.id, token.id, token.step);
       const key = `${coord.row}-${coord.col}`;
       if (!tokenMap[key]) {
         tokenMap[key] = [];
@@ -49,67 +53,6 @@ export const LudoBoard: React.FC<LudoBoardProps> = ({
       tokenMap[key].push({ token, player });
     });
   });
-
-  function getStaticTokenCoord(playerId: number, tokenId: number, step: number): BoardCoordinate {
-    if (step === 0) {
-      const baseCoords: Record<number, BoardCoordinate[]> = {
-        0: [{ row: 2, col: 2 }, { row: 2, col: 3 }, { row: 3, col: 2 }, { row: 3, col: 3 }],
-        1: [{ row: 2, col: 11 }, { row: 2, col: 12 }, { row: 3, col: 11 }, { row: 3, col: 12 }],
-        2: [{ row: 11, col: 11 }, { row: 11, col: 12 }, { row: 12, col: 11 }, { row: 12, col: 12 }],
-        3: [{ row: 11, col: 2 }, { row: 11, col: 3 }, { row: 12, col: 2 }, { row: 12, col: 3 }],
-      };
-      return baseCoords[playerId][tokenId];
-    }
-    if (step <= 51) {
-      const offsets = [0, 13, 26, 39];
-      const trackIdx = (offsets[playerId] + (step - 1)) % 52;
-      const COMMON: BoardCoordinate[] = [
-        { row: 6, col: 1 }, { row: 6, col: 2 }, { row: 6, col: 3 }, { row: 6, col: 4 }, { row: 6, col: 5 },
-        { row: 5, col: 6 }, { row: 4, col: 6 }, { row: 3, col: 6 }, { row: 2, col: 6 }, { row: 1, col: 6 }, { row: 0, col: 6 },
-        { row: 0, col: 7 }, { row: 0, col: 8 },
-        { row: 1, col: 8 }, { row: 2, col: 8 }, { row: 3, col: 8 }, { row: 4, col: 8 }, { row: 5, col: 8 },
-        { row: 6, col: 9 }, { row: 6, col: 10 }, { row: 6, col: 11 }, { row: 6, col: 12 }, { row: 6, col: 13 }, { row: 6, col: 14 },
-        { row: 7, col: 14 }, { row: 8, col: 14 },
-        { row: 8, col: 13 }, { row: 8, col: 12 }, { row: 8, col: 11 }, { row: 8, col: 10 }, { row: 8, col: 9 },
-        { row: 9, col: 8 }, { row: 10, col: 8 }, { row: 11, col: 8 }, { row: 12, col: 8 }, { row: 13, col: 8 }, { row: 14, col: 8 },
-        { row: 14, col: 7 }, { row: 14, col: 6 },
-        { row: 13, col: 6 }, { row: 12, col: 6 }, { row: 11, col: 6 }, { row: 10, col: 6 }, { row: 9, col: 6 },
-        { row: 8, col: 5 }, { row: 8, col: 4 }, { row: 8, col: 3 }, { row: 8, col: 2 }, { row: 8, col: 1 }, { row: 8, col: 0 },
-        { row: 7, col: 0 }, { row: 6, col: 0 }
-      ];
-      return COMMON[trackIdx];
-    }
-    if (step <= 56) {
-      const homeIdx = step - 52;
-      const paths: Record<number, BoardCoordinate[]> = {
-        0: [{ row: 7, col: 1 }, { row: 7, col: 2 }, { row: 7, col: 3 }, { row: 7, col: 4 }, { row: 7, col: 5 }],
-        1: [{ row: 1, col: 7 }, { row: 2, col: 7 }, { row: 3, col: 7 }, { row: 4, col: 7 }, { row: 5, col: 7 }],
-        2: [{ row: 7, col: 13 }, { row: 7, col: 12 }, { row: 7, col: 11 }, { row: 7, col: 10 }, { row: 7, col: 9 }],
-        3: [{ row: 13, col: 7 }, { row: 12, col: 7 }, { row: 11, col: 7 }, { row: 10, col: 7 }, { row: 9, col: 7 }],
-      };
-      return paths[playerId][homeIdx];
-    }
-    // Final home
-    const finalHomes: Record<number, BoardCoordinate> = {
-      0: { row: 7, col: 6 },
-      1: { row: 6, col: 7 },
-      2: { row: 7, col: 8 },
-      3: { row: 8, col: 7 },
-    };
-    return finalHomes[playerId];
-  }
-
-  // Safe square cell set
-  const safeCells = new Set<string>([
-    '6-1',  // Red Start
-    '2-6',  // Red Star
-    '1-8',  // Green Start
-    '6-12', // Green Star
-    '8-13', // Yellow Start
-    '12-8', // Yellow Star
-    '13-6', // Blue Start
-    '8-2',  // Blue Star
-  ]);
 
   const renderCellContent = (row: number, col: number) => {
     const key = `${row}-${col}`;
@@ -152,7 +95,7 @@ export const LudoBoard: React.FC<LudoBoardProps> = ({
     }
 
     // Star Safe squares
-    if (safeCells.has(key) && !icon) {
+    if (SAFE_CELL_KEYS.has(key) && !icon) {
       icon = <Star className="w-3 h-3 text-amber-500 fill-amber-400" />;
     }
 
@@ -221,23 +164,20 @@ export const LudoBoard: React.FC<LudoBoardProps> = ({
             borderColor: '#FFFFFF',
           }}
         >
-          {/* Base Header with Character info */}
-          <div className="flex items-center justify-between text-white">
-            <div className="flex items-center gap-1.5 overflow-hidden">
-              <CharacterAvatar id={player.characterId} size="xs" />
-              <span className="text-[11px] sm:text-xs font-bold truncate drop-shadow-xs">
-                {player.name}
-              </span>
-            </div>
+          {/* Clean Base Header */}
+          <div className="flex items-center justify-between text-white px-0.5">
+            <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider opacity-90">
+              {colorCfg.name}
+            </span>
             {player.hasWon && (
-              <span className="text-[10px] bg-amber-400 text-neutral-900 px-1.5 py-0.5 rounded-full font-extrabold flex items-center gap-0.5">
+              <span className="text-[9px] bg-amber-400 text-neutral-900 px-1.5 py-0.5 rounded-full font-extrabold flex items-center gap-0.5 shadow-xs">
                 <Crown className="w-2.5 h-2.5 fill-current" /> WON
               </span>
             )}
           </div>
 
           {/* White Inner Box with 4 Token Slots */}
-          <div className="bg-white rounded-xl p-2 grid grid-cols-2 grid-rows-2 gap-2 place-items-center shadow-inner h-[65%]">
+          <div className="bg-white rounded-xl p-1.5 sm:p-2 grid grid-cols-2 grid-rows-2 gap-2 place-items-center shadow-inner h-[72%] sm:h-[75%]">
             {[0, 1, 2, 3].map((slotIdx) => {
               const token = player.tokens[slotIdx];
               const isInBase = token && token.step === 0;
@@ -326,7 +266,7 @@ export const LudoBoard: React.FC<LudoBoardProps> = ({
   return (
     <div className="relative w-full max-w-[440px] aspect-square mx-auto bg-white rounded-3xl shadow-2xl overflow-hidden border-4 border-neutral-800 select-none">
       {/* 15x15 Grid of standard cells */}
-      <div className="grid grid-cols-15 grid-rows-15 w-full h-full">
+      <div className="grid grid-cols-[repeat(15,minmax(0,1fr))] grid-rows-[repeat(15,minmax(0,1fr))] w-full h-full">
         {Array.from({ length: 15 }).map((_, r) =>
           Array.from({ length: 15 }).map((_, c) => (
             <div key={`${r}-${c}`} className="w-full h-full">
@@ -367,6 +307,64 @@ export const LudoBoard: React.FC<LudoBoardProps> = ({
           />
         </div>
       )}
+
+      {/* Dramatic Capture / Cut Visual Impact Feedback */}
+      <AnimatePresence>
+        {captureFeedback && (
+          <div
+            className="absolute pointer-events-none z-50 flex items-center justify-center"
+            style={{
+              width: `${100 / 15}%`,
+              height: `${100 / 15}%`,
+              top: `${(captureFeedback.coord.row / 15) * 100}%`,
+              left: `${(captureFeedback.coord.col / 15) * 100}%`,
+            }}
+          >
+            {/* Impact Flash Shockwave */}
+            <motion.div
+              initial={{ scale: 0.5, opacity: 1 }}
+              animate={{ scale: 2.4, opacity: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.4, ease: 'easeOut' }}
+              className="absolute w-full h-full rounded-full bg-red-500/60 border-2 border-amber-300"
+            />
+
+            {/* "CUT!" / "OUT!" badge */}
+            <motion.div
+              initial={{ scale: 0.2, y: 0, opacity: 0 }}
+              animate={{ scale: [0.2, 1.25, 1], y: -16, opacity: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              transition={{ duration: 0.45, ease: 'backOut' }}
+              className="absolute -top-3 z-50 bg-gradient-to-r from-red-600 to-amber-500 text-white font-black text-[10px] sm:text-xs px-2 py-0.5 rounded-full shadow-xl border border-white tracking-wider flex items-center gap-0.5 whitespace-nowrap"
+            >
+              <Zap className="w-3 h-3 fill-amber-300 text-amber-300" />
+              CUT!
+            </motion.div>
+
+            {/* Knocked Opponent Token Animation */}
+            <motion.div
+              initial={{ scale: 1, rotate: 0 }}
+              animate={{
+                scale: [1, 1.3, 0.4, 0],
+                rotate: [0, -30, 180, 360],
+                y: [0, -10, 20],
+                opacity: [1, 1, 0.6, 0],
+              }}
+              transition={{ duration: 0.48, ease: 'easeInOut' }}
+              className="w-[90%] h-[90%] flex items-center justify-center"
+            >
+              <Token
+                tokenId={captureFeedback.capturedTokenId}
+                playerId={captureFeedback.capturedPlayerId}
+                characterId={captureFeedback.capturedCharacterId}
+                playerColor={captureFeedback.capturedPlayerColor}
+                isSelectable={false}
+                size="normal"
+              />
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

@@ -108,29 +108,39 @@ class SoundEffects {
     });
   }
 
-  // Cut / Capture opponent's token
+  // Cut / Capture opponent's token (Satisfying punchy impact)
   public playTokenCut() {
     if (this.isMuted) return;
     this.initContext();
     if (!this.ctx) return;
 
     const now = this.ctx.currentTime;
-    // Punch bass drop
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
+    
+    // 1. Initial quick swoosh/snap
+    const snapOsc = this.ctx.createOscillator();
+    const snapGain = this.ctx.createGain();
+    snapOsc.type = 'sawtooth';
+    snapOsc.frequency.setValueAtTime(650, now);
+    snapOsc.frequency.exponentialRampToValueAtTime(120, now + 0.08);
+    snapGain.gain.setValueAtTime(0.35, now);
+    snapGain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+    snapOsc.connect(snapGain);
+    snapGain.connect(this.ctx.destination);
+    snapOsc.start(now);
+    snapOsc.stop(now + 0.08);
 
-    osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(280, now);
-    osc.frequency.exponentialRampToValueAtTime(60, now + 0.25);
-
-    gain.gain.setValueAtTime(0.3, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
-
-    osc.connect(gain);
-    gain.connect(this.ctx.destination);
-
-    osc.start(now);
-    osc.stop(now + 0.3);
+    // 2. Punchy bass impact thump
+    const bassOsc = this.ctx.createOscillator();
+    const bassGain = this.ctx.createGain();
+    bassOsc.type = 'triangle';
+    bassOsc.frequency.setValueAtTime(220, now + 0.02);
+    bassOsc.frequency.exponentialRampToValueAtTime(45, now + 0.28);
+    bassGain.gain.setValueAtTime(0.4, now + 0.02);
+    bassGain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+    bassOsc.connect(bassGain);
+    bassGain.connect(this.ctx.destination);
+    bassOsc.start(now + 0.02);
+    bassOsc.stop(now + 0.28);
   }
 
   // Reaching final home

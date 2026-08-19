@@ -63,3 +63,12 @@ export interface MoveOption {
     tokenId: number;
   };
 }
+
+export interface CaptureFeedback {
+  coord: BoardCoordinate;
+  attackerPlayerId: number;
+  capturedPlayerId: number;
+  capturedTokenId: number;
+  capturedCharacterId: CharacterId;
+  capturedPlayerColor: PlayerColor;
+}

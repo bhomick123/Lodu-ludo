@@ -67,7 +67,135 @@ export function isSafeSquare(trackIndex: number | null): boolean {
 }
 
 /**
+ * Returns all tokens currently on a specific common track index (0-51).
+ */
+export function getTokensAtTrack(
+  allPlayers: Player[],
+  trackIndex: number
+): { player: Player; token: TokenData }[] {
+  const result: { player: Player; token: TokenData }[] = [];
+  for (const p of allPlayers) {
+    for (const token of p.tokens) {
+      if (token.step >= 1 && token.step <= 51) {
+        const tIndex = getTrackIndex(p.id, token.step);
+        if (tIndex === trackIndex) {
+          result.push({ player: p, token });
+        }
+      }
+    }
+  }
+  return result;
+}
+
+/**
+ * Returns the count of a specific player's tokens on a common track index.
+ */
+export function getPlayerTokensAtTrack(
+  player: Player,
+  trackIndex: number
+): TokenData[] {
+  return player.tokens.filter((token) => {
+    if (token.step >= 1 && token.step <= 51) {
+      return getTrackIndex(player.id, token.step) === trackIndex;
+    }
+    return false;
+  });
+}
+
+/**
+ * Checks if an opponent has a block (2 or more same-color tokens) on a specific track index.
+ */
+export function isOpponentBlockAtTrack(
+  allPlayers: Player[],
+  currentPlayerId: number,
+  trackIndex: number
+): boolean {
+  for (const opp of allPlayers) {
+    if (opp.id === currentPlayerId || opp.hasWon) continue;
+    const oppTokensOnCell = getPlayerTokensAtTrack(opp, trackIndex);
+    if (oppTokensOnCell.length >= 2) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Validates whether a token can traverse from `fromStep` to `toStep`.
+ * Checks every intermediate step and destination for opponent blocks.
+ * A block (2+ opponent tokens on the same cell) is impassable and cannot be jumped over or landed upon.
+ */
+export function isPathBlocked(
+  player: Player,
+  allPlayers: Player[],
+  fromStep: number,
+  toStep: number
+): boolean {
+  if (fromStep === 0) {
+    // Releasing to step 1
+    const targetTrackIndex = PLAYER_START_OFFSETS[player.id];
+    return isOpponentBlockAtTrack(allPlayers, player.id, targetTrackIndex);
+  }
+
+  // Check each step along the movement path
+  for (let s = fromStep + 1; s <= toStep; s++) {
+    // Only common track steps (1 to 51) can contain opponent tokens/blocks
+    if (s >= 1 && s <= 51) {
+      const trackIndex = (PLAYER_START_OFFSETS[player.id] + (s - 1)) % 52;
+      if (isOpponentBlockAtTrack(allPlayers, player.id, trackIndex)) {
+        return true; // Path is blocked by an opponent stack!
+      }
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Finds if a legal cut of an opponent's single token can happen at the target track index.
+ * - Must NOT be a safe square.
+ * - Must be an opponent with EXACTLY 1 token on the square.
+ */
+export function findOpponentTokenToCut(
+  allPlayers: Player[],
+  currentPlayerId: number,
+  targetTrackIndex: number
+): { playerId: number; tokenId: number } | undefined {
+  if (isSafeSquare(targetTrackIndex)) {
+    return undefined; // Safe square: no cuts allowed
+  }
+
+  for (const opp of allPlayers) {
+    if (opp.id === currentPlayerId || opp.hasWon) continue;
+    const oppTokens = getPlayerTokensAtTrack(opp, targetTrackIndex);
+    // If opponent has exactly 1 token on this non-safe square, it can be captured
+    if (oppTokens.length === 1) {
+      return { playerId: opp.id, tokenId: oppTokens[0].id };
+    }
+    // If opponent has 2+ tokens, it's a block and cannot be cut
+  }
+
+  return undefined;
+}
+
+/**
+ * Extracts the distinct token IDs that have legal moves available for the current dice roll.
+ */
+export function getDistinctLegalTokenIds(moves: MoveOption[]): number[] {
+  const tokenIds = new Set<number>();
+  for (const move of moves) {
+    tokenIds.add(move.tokenId);
+  }
+  return Array.from(tokenIds);
+}
+
+/**
  * Returns all valid moves for the given player and dice roll.
+ * Enforces:
+ * - Base release only on 6
+ * - Exact home entry (no overshooting beyond step 57)
+ * - Complete path validation against opponent blocks
+ * - Proper stack immunity & single-token capture
  */
 export function getValidMoves(
   player: Player,
@@ -78,80 +206,63 @@ export function getValidMoves(
   const moves: MoveOption[] = [];
 
   for (const token of player.tokens) {
-    // 1. Token in base
+    // 1. Token in base (step 0)
     if (token.step === 0) {
       if (diceRoll === 6) {
-        // Can release token to step 1
         const targetTrackIndex = PLAYER_START_OFFSETS[player.id];
-        // Check if releasing cuts an opponent (on start square it is safe, so cuts won't happen on safe square)
-        const opponentCut = !isSafeSquare(targetTrackIndex)
-          ? findOpponentTokenAtTrack(allPlayers, player.id, targetTrackIndex)
-          : undefined;
-
-        moves.push({
-          tokenId: token.id,
-          fromStep: 0,
-          toStep: 1,
-          isRelease: true,
-          isHomeEntry: false,
-          cutsOpponentToken: opponentCut,
-        });
+        // Check if start position is blocked by an opponent stack
+        if (!isOpponentBlockAtTrack(allPlayers, player.id, targetTrackIndex)) {
+          const opponentCut = findOpponentTokenToCut(allPlayers, player.id, targetTrackIndex);
+          moves.push({
+            tokenId: token.id,
+            fromStep: 0,
+            toStep: 1,
+            isRelease: true,
+            isHomeEntry: false,
+            cutsOpponentToken: opponentCut,
+          });
+        }
       }
       continue;
     }
 
-    // 2. Token already at final home
+    // 2. Token already in final home (step 57)
     if (token.step === TOTAL_STEPS_TO_HOME) {
       continue;
     }
 
     // 3. Token on board or home stretch
     const targetStep = token.step + diceRoll;
-    if (targetStep <= TOTAL_STEPS_TO_HOME) {
-      const isHomeEntry = targetStep === TOTAL_STEPS_TO_HOME;
-      let opponentCut: { playerId: number; tokenId: number } | undefined;
 
-      if (targetStep >= 1 && targetStep <= 51) {
-        const targetTrackIndex = (PLAYER_START_OFFSETS[player.id] + (targetStep - 1)) % 52;
-        if (!isSafeSquare(targetTrackIndex)) {
-          opponentCut = findOpponentTokenAtTrack(allPlayers, player.id, targetTrackIndex);
-        }
-      }
-
-      moves.push({
-        tokenId: token.id,
-        fromStep: token.step,
-        toStep: targetStep,
-        isRelease: false,
-        isHomeEntry,
-        cutsOpponentToken: opponentCut,
-      });
+    // Reject overshoot (must enter home on exact count)
+    if (targetStep > TOTAL_STEPS_TO_HOME) {
+      continue;
     }
+
+    // Check if the entire path is unobstructed by opponent blocks
+    if (isPathBlocked(player, allPlayers, token.step, targetStep)) {
+      continue;
+    }
+
+    const isHomeEntry = targetStep === TOTAL_STEPS_TO_HOME;
+    let opponentCut: { playerId: number; tokenId: number } | undefined;
+
+    if (targetStep >= 1 && targetStep <= 51) {
+      const targetTrackIndex = (PLAYER_START_OFFSETS[player.id] + (targetStep - 1)) % 52;
+      opponentCut = findOpponentTokenToCut(allPlayers, player.id, targetTrackIndex);
+    }
+
+    moves.push({
+      tokenId: token.id,
+      fromStep: token.step,
+      toStep: targetStep,
+      isRelease: false,
+      isHomeEntry,
+      cutsOpponentToken: opponentCut,
+    });
   }
 
   return moves;
-}
-
-/**
- * Finds if any opponent's token is currently on the specified common track index.
- */
-export function findOpponentTokenAtTrack(
-  allPlayers: Player[],
-  currentPlayerId: number,
-  targetTrackIndex: number
-): { playerId: number; tokenId: number } | undefined {
-  for (const opp of allPlayers) {
-    if (opp.id === currentPlayerId || opp.hasWon) continue;
-    for (const token of opp.tokens) {
-      if (token.step >= 1 && token.step <= 51) {
-        const oppTrackIndex = getTrackIndex(opp.id, token.step);
-        if (oppTrackIndex === targetTrackIndex) {
-          return { playerId: opp.id, tokenId: token.id };
-        }
-      }
-    }
-  }
-  return undefined;
 }
 
 /**
@@ -188,14 +299,13 @@ export function getNextPlayerId(
   getsExtraTurn: boolean
 ): number {
   if (getsExtraTurn) {
-    // Current player keeps turn if they haven't won
     const current = allPlayers.find((p) => p.id === currentPlayerId);
     if (current && !current.hasWon) {
       return currentPlayerId;
     }
   }
 
-  // Find next active player in clockwise order 0 -> 1 -> 2 -> 3 -> 0
+  // Step clockwise 0 -> 1 -> 2 -> 3 -> 0
   for (let i = 1; i <= 4; i++) {
     const nextId = (currentPlayerId + i) % 4;
     const nextPlayer = allPlayers.find((p) => p.id === nextId);

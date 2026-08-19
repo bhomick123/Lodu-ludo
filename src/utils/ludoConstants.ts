@@ -76,6 +76,16 @@ export const SAFE_TRACK_INDICES = new Set<number>([
   47, // Blue side star
 ]);
 
+// Safe square board coordinates
+export const SAFE_SQUARES: BoardCoordinate[] = Array.from(SAFE_TRACK_INDICES).map(
+  (idx) => COMMON_TRACK_COORDS[idx]
+);
+
+// Safe cell coordinate key set ('row-col') for fast lookup
+export const SAFE_CELL_KEYS = new Set<string>(
+  SAFE_SQUARES.map((coord) => `${coord.row}-${coord.col}`)
+);
+
 // 5 Home path steps for each player
 export const HOME_PATHS: Record<number, BoardCoordinate[]> = {
   0: [ // Red
