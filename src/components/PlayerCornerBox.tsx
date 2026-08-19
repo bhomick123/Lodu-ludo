@@ -4,11 +4,12 @@ import { Player, TurnState } from '../types';
 import { CharacterAvatar } from './CharacterAvatar';
 import { Dice } from './Dice';
 import { COLOR_CONFIG } from '../utils/ludoConstants';
-import { Crown, Home, ChevronRight, ChevronLeft, ChevronDown, ChevronUp } from 'lucide-react';
+import { Bot, Crown, Home, Sparkles } from 'lucide-react';
 
 interface PlayerCornerBoxProps {
   player: Player;
   isActive: boolean;
+  isInactiveSlot?: boolean;
   turnState: TurnState;
   diceValue: number | null;
   isRolling: boolean;
@@ -20,6 +21,7 @@ interface PlayerCornerBoxProps {
 export const PlayerCornerBox: React.FC<PlayerCornerBoxProps> = ({
   player,
   isActive,
+  isInactiveSlot = false,
   turnState,
   diceValue,
   isRolling,
@@ -31,8 +33,23 @@ export const PlayerCornerBox: React.FC<PlayerCornerBoxProps> = ({
   const homeCount = player.tokens.filter((t) => t.step === 57).length;
   const isRightSide = position === 'top-right' || position === 'bottom-right';
 
-  // Only the active player's dice can roll during WAITING_FOR_ROLL
-  const isPlayerDiceActive = isActive && canRoll;
+  // Inactive Slot placeholder
+  if (isInactiveSlot) {
+    return (
+      <div
+        className={`flex items-center gap-1.5 opacity-30 select-none ${
+          isRightSide ? 'flex-row-reverse text-right' : 'flex-row text-left'
+        }`}
+      >
+        <div className="px-2.5 py-2 rounded-2xl bg-neutral-950/40 border border-white/5 text-[10px] font-bold text-neutral-500">
+          Empty Slot
+        </div>
+      </div>
+    );
+  }
+
+  // Only the active player's dice can roll during WAITING_FOR_ROLL (and only human players can click manual roll)
+  const isPlayerDiceActive = isActive && canRoll && !player.isAI;
   // If active, show current dice value or null; if inactive, show idle state
   const displayedDiceValue = isActive ? diceValue : null;
   const isThisPlayerRolling = isActive && isRolling;
@@ -44,12 +61,22 @@ export const PlayerCornerBox: React.FC<PlayerCornerBoxProps> = ({
       }`}
     >
       {/* Player Profile Box */}
-      <div
+      <motion.div
+        animate={
+          isActive
+            ? { scale: [1, 1.02, 1] }
+            : { scale: 1 }
+        }
+        transition={
+          isActive
+            ? { duration: 2, repeat: Infinity, ease: 'easeInOut' }
+            : { duration: 0.2 }
+        }
         className={`relative flex items-center gap-1.5 sm:gap-2 px-2 py-1.5 sm:px-2.5 sm:py-2 rounded-2xl transition-all duration-200 border ${
           isRightSide ? 'flex-row-reverse' : 'flex-row'
         } ${
           isActive
-            ? 'bg-neutral-900/95 border-amber-400 ring-2 ring-amber-400/60 shadow-lg shadow-amber-500/20 scale-[1.03]'
+            ? 'bg-neutral-900/95 border-amber-400 ring-2 ring-amber-400/70 shadow-lg shadow-amber-500/25'
             : 'bg-neutral-900/70 border-white/10 opacity-75'
         }`}
       >
@@ -88,6 +115,12 @@ export const PlayerCornerBox: React.FC<PlayerCornerBoxProps> = ({
             >
               {colorCfg.name}
             </span>
+
+            {player.isAI && (
+              <span className="bg-purple-950/80 border border-purple-500/50 text-purple-300 text-[8px] font-extrabold px-1 rounded-xs flex items-center gap-0.5">
+                <Bot className="w-2.5 h-2.5" /> AI
+              </span>
+            )}
           </div>
 
           <div className="text-[11px] sm:text-xs font-bold text-white truncate leading-tight mt-0.5">
@@ -99,7 +132,35 @@ export const PlayerCornerBox: React.FC<PlayerCornerBoxProps> = ({
             <span>{homeCount}/4</span>
           </div>
         </div>
-      </div>
+
+        {/* Subtle Turn / AI Thinking Indicator Badge */}
+        {isActive && (
+          <motion.div
+            initial={{ opacity: 0, y: 5 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={`absolute -top-2.5 ${
+              isRightSide ? 'right-2' : 'left-2'
+            } ${
+              player.isAI ? 'bg-purple-600 text-white' : 'bg-amber-400 text-neutral-950'
+            } text-[8px] font-black uppercase tracking-wider px-1.5 py-0.2 rounded-full shadow-md flex items-center gap-0.5 pointer-events-none`}
+          >
+            {player.isAI ? (
+              <>
+                <Bot className="w-2 h-2 fill-current" />
+                {turnState === 'WAITING_FOR_ROLL' || turnState === 'ROLLING'
+                  ? 'AI Rolling...'
+                  : turnState === 'WAITING_FOR_TOKEN_SELECTION'
+                  ? 'AI Thinking...'
+                  : 'AI Moving'}
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-2 h-2 fill-current" /> YOUR TURN
+              </>
+            )}
+          </motion.div>
+        )}
+      </motion.div>
 
       {/* Dedicated Player Dice Unit */}
       <div className="relative shrink-0">

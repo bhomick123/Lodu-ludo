@@ -27,13 +27,50 @@ export const WinnerScreen: React.FC<WinnerScreenProps> = ({
     sounds.playWinFanfare();
   }, []);
 
+  // Generate 25 colorful floating confetti pieces
+  const confettiPieces = Array.from({ length: 25 }).map((_, i) => ({
+    id: i,
+    x: (i * 14) % 100,
+    delay: (i * 0.08) % 1.5,
+    duration: 2 + (i % 3) * 0.5,
+    color: ['#F59E0B', '#EF4444', '#10B981', '#3B82F6', '#EC4899', '#8B5CF6'][i % 6],
+    size: 6 + (i % 4) * 3,
+  }));
+
   return (
-    <div className="fixed inset-0 z-50 bg-neutral-950/90 backdrop-blur-xl flex items-center justify-center p-4 selection:bg-amber-400">
+    <div className="fixed inset-0 z-50 bg-neutral-950/90 backdrop-blur-xl flex items-center justify-center p-4 selection:bg-amber-400 overflow-hidden select-none">
+      {/* Floating Confetti Particles */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        {confettiPieces.map((p) => (
+          <motion.div
+            key={p.id}
+            initial={{ y: -20, x: `${p.x}vw`, opacity: 1, rotate: 0 }}
+            animate={{
+              y: '105vh',
+              rotate: [0, 180, 360, 540],
+              opacity: [1, 1, 0.8, 0],
+            }}
+            transition={{
+              duration: p.duration,
+              delay: p.delay,
+              repeat: Infinity,
+              ease: 'linear',
+            }}
+            className="absolute rounded-xs shadow-sm"
+            style={{
+              backgroundColor: p.color,
+              width: `${p.size}px`,
+              height: `${p.size * 0.6}px`,
+            }}
+          />
+        ))}
+      </div>
+
       <motion.div
         initial={{ opacity: 0, scale: 0.85, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         transition={{ type: 'spring', damping: 20, stiffness: 260 }}
-        className="w-full max-w-md bg-neutral-900 border border-white/20 rounded-3xl p-6 sm:p-8 text-center text-white shadow-2xl relative overflow-hidden"
+        className="w-full max-w-md bg-neutral-900 border border-white/20 rounded-3xl p-6 sm:p-8 text-center text-white shadow-2xl relative overflow-hidden z-10"
       >
         {/* Decorative Golden Ambient Glow */}
         <div
@@ -53,7 +90,7 @@ export const WinnerScreen: React.FC<WinnerScreenProps> = ({
 
         {/* Title */}
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/30 text-xs font-black uppercase tracking-widest mb-2">
-          <Sparkles className="w-3.5 h-3.5" /> LODU CHAMPION 🏆
+          <Sparkles className="w-3.5 h-3.5" /> LUCKY LUDO CHAMPION 🏆
         </div>
 
         <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight mt-1">
@@ -92,7 +129,10 @@ export const WinnerScreen: React.FC<WinnerScreenProps> = ({
             id="play-again-btn"
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            onClick={onPlayAgain}
+            onClick={() => {
+              sounds.playButton();
+              onPlayAgain();
+            }}
             className="w-full py-3.5 px-6 rounded-2xl bg-amber-400 hover:bg-amber-300 text-neutral-950 font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-amber-400/20 cursor-pointer"
           >
             <RotateCcw className="w-4 h-4 stroke-[2.5]" /> PLAY AGAIN
@@ -103,7 +143,10 @@ export const WinnerScreen: React.FC<WinnerScreenProps> = ({
               id="change-characters-btn"
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              onClick={onChangeCharacters}
+              onClick={() => {
+                sounds.playButton();
+                onChangeCharacters();
+              }}
               className="py-3 px-3 rounded-2xl bg-neutral-800 hover:bg-neutral-700 text-neutral-200 border border-white/10 font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer"
             >
               <Users className="w-4 h-4" /> Change Heroes
@@ -113,7 +156,10 @@ export const WinnerScreen: React.FC<WinnerScreenProps> = ({
               id="go-home-btn"
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              onClick={onGoHome}
+              onClick={() => {
+                sounds.playButton();
+                onGoHome();
+              }}
               className="py-3 px-3 rounded-2xl bg-neutral-800 hover:bg-neutral-700 text-neutral-200 border border-white/10 font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer"
             >
               <Home className="w-4 h-4" /> Home

@@ -2,6 +2,39 @@ export type CharacterId = 'modi' | 'kejriwal' | 'rahul' | 'trump';
 
 export type PlayerColor = 'red' | 'green' | 'yellow' | 'blue';
 
+export type AIDifficulty = 'easy' | 'medium' | 'hard';
+
+export type PlayerType = 'human' | 'ai';
+
+export type GameMode = 'local' | 'ai' | 'friends';
+
+export type GameSubMode = 'classic' | 'team_up' | 'quick';
+
+export type PlayerCount = 2 | 3 | 4;
+
+export type NavigationTab = 'home' | 'events' | 'leaders' | 'settings';
+
+export interface RoomPlayer {
+  id: string; // unique client id
+  slotIndex: number; // 3 (Blue/P1), 1 (Green/P2), 0 (Red/P3), 2 (Yellow/P4)
+  name: string;
+  characterId: CharacterId;
+  isHost: boolean;
+  isReady: boolean;
+}
+
+export interface FriendsRoomState {
+  code: string;
+  hostId: string;
+  createdAt: number;
+  status: 'lobby' | 'playing';
+  players: RoomPlayer[];
+  playerCount: PlayerCount;
+  characterAssignments: Record<number, CharacterId>;
+  playerNames: Record<number, string>;
+  playerTypes: Record<number, PlayerType>;
+}
+
 export interface Character {
   id: CharacterId;
   name: string;
@@ -23,6 +56,9 @@ export interface Player {
   name: string;
   tokens: TokenData[];
   hasWon: boolean;
+  isAI?: boolean;
+  playerType?: PlayerType;
+  difficulty?: AIDifficulty;
   rank?: number;
 }
 
@@ -38,7 +74,7 @@ export interface TokenData {
   isHome: boolean;
 }
 
-export type GamePhase = 'home' | 'character_selection' | 'playing' | 'game_over';
+export type GamePhase = 'home' | 'match_setup' | 'friends_room' | 'playing' | 'game_over';
 
 export type TurnState = 
   | 'WAITING_FOR_ROLL'

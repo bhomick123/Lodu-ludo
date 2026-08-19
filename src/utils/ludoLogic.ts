@@ -111,7 +111,7 @@ export function isOpponentBlockAtTrack(
   trackIndex: number
 ): boolean {
   for (const opp of allPlayers) {
-    if (opp.id === currentPlayerId || opp.hasWon) continue;
+    if (opp.id === currentPlayerId || opp.hasWon || checkIfPlayerWon(opp)) continue;
     const oppTokensOnCell = getPlayerTokensAtTrack(opp, trackIndex);
     if (oppTokensOnCell.length >= 2) {
       return true;
@@ -166,7 +166,7 @@ export function findOpponentTokenToCut(
   }
 
   for (const opp of allPlayers) {
-    if (opp.id === currentPlayerId || opp.hasWon) continue;
+    if (opp.id === currentPlayerId || opp.hasWon || checkIfPlayerWon(opp)) continue;
     const oppTokens = getPlayerTokensAtTrack(opp, targetTrackIndex);
     // If opponent has exactly 1 token on this non-safe square, it can be captured
     if (oppTokens.length === 1) {
@@ -196,13 +196,14 @@ export function getDistinctLegalTokenIds(moves: MoveOption[]): number[] {
  * - Exact home entry (no overshooting beyond step 57)
  * - Complete path validation against opponent blocks
  * - Proper stack immunity & single-token capture
+ * - Correct evaluation regardless of how many tokens (0, 1, 2, or 3) have already reached home
  */
 export function getValidMoves(
   player: Player,
   allPlayers: Player[],
   diceRoll: number
 ): MoveOption[] {
-  if (player.hasWon) return [];
+  if (player.hasWon || checkIfPlayerWon(player)) return [];
   const moves: MoveOption[] = [];
 
   for (const token of player.tokens) {
@@ -226,7 +227,7 @@ export function getValidMoves(
       continue;
     }
 
-    // 2. Token already in final home (step 57)
+    // 2. Token already in final home (step 57) - ignore finished tokens
     if (token.step === TOTAL_STEPS_TO_HOME) {
       continue;
     }
@@ -300,7 +301,7 @@ export function getNextPlayerId(
 ): number {
   if (getsExtraTurn) {
     const current = allPlayers.find((p) => p.id === currentPlayerId);
-    if (current && !current.hasWon) {
+    if (current && !current.hasWon && !checkIfPlayerWon(current)) {
       return currentPlayerId;
     }
   }
@@ -309,7 +310,7 @@ export function getNextPlayerId(
   for (let i = 1; i <= 4; i++) {
     const nextId = (currentPlayerId + i) % 4;
     const nextPlayer = allPlayers.find((p) => p.id === nextId);
-    if (nextPlayer && !nextPlayer.hasWon) {
+    if (nextPlayer && !nextPlayer.hasWon && !checkIfPlayerWon(nextPlayer)) {
       return nextId;
     }
   }
@@ -322,4 +323,22 @@ export function getNextPlayerId(
  */
 export function checkIfPlayerWon(player: Player): boolean {
   return player.tokens.every((t) => t.step === TOTAL_STEPS_TO_HOME);
+}
+
+export interface CornerSlotAssignments {
+  topLeft: number;
+  topRight: number;
+  bottomLeft: number;
+  bottomRight: number;
+}
+
+/**
+ * Physical UI corner slot assignments matching the Ludo board quadrants:
+ * - Top-Left: Player 0 (Red)
+ * - Top-Right: Player 1 (Green)
+ * - Bottom-Left: Player 3 (Blue - preferred human seat in VS AI)
+ * - Bottom-Right: Player 2 (Yellow)
+ */
+export function getCornerSlotAssignments(): CornerSlotAssignments {
+  return { topLeft: 0, topRight: 1, bottomLeft: 3, bottomRight: 2 };
 }

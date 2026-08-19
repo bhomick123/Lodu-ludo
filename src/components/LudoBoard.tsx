@@ -3,13 +3,13 @@ import { Star, Home, Crown, ArrowRight, ArrowDown, ArrowLeft, ArrowUp, Zap } fro
 import { motion, AnimatePresence } from 'motion/react';
 import { BoardCoordinate, CaptureFeedback, MoveOption, Player, TokenData } from '../types';
 import { Token } from './Token';
-import { CharacterAvatar } from './CharacterAvatar';
 import { COLOR_CONFIG, SAFE_CELL_KEYS } from '../utils/ludoConstants';
 import { getCoordinateForToken } from '../utils/ludoLogic';
 
 interface LudoBoardProps {
   players: Player[];
   activePlayerId: number;
+  activePlayerIndices?: number[];
   validMoves: MoveOption[];
   isMoving: boolean;
   movingTokenInfo?: {
@@ -24,6 +24,7 @@ interface LudoBoardProps {
 export const LudoBoard: React.FC<LudoBoardProps> = ({
   players,
   activePlayerId,
+  activePlayerIndices = [0, 1, 2, 3],
   validMoves,
   isMoving,
   movingTokenInfo,
@@ -34,6 +35,9 @@ export const LudoBoard: React.FC<LudoBoardProps> = ({
   const tokenMap: Record<string, { token: TokenData; player: Player }[]> = {};
 
   players.forEach((player) => {
+    // If player is inactive in 2P/3P mode, skip tokens
+    if (!activePlayerIndices.includes(player.id)) return;
+
     player.tokens.forEach((token) => {
       // If this token is actively moving, skip it from static grid map
       if (
@@ -157,7 +161,7 @@ export const LudoBoard: React.FC<LudoBoardProps> = ({
       >
         <div
           className={`w-full h-full rounded-2xl p-2.5 sm:p-3.5 flex flex-col justify-between shadow-md border-2 relative ${
-            isCurrentActive ? 'ring-4 ring-white shadow-xl scale-[1.02]' : 'opacity-95'
+            isCurrentActive ? 'ring-4 ring-amber-400 shadow-xl scale-[1.01]' : 'opacity-95'
           }`}
           style={{
             backgroundColor: colorCfg.bgHex,
@@ -238,6 +242,7 @@ export const LudoBoard: React.FC<LudoBoardProps> = ({
 
         {/* Display Tokens that have reached final home step 57 */}
         {players.map((p) => {
+          if (!activePlayerIndices.includes(p.id)) return null;
           const homeTokens = p.tokens.filter((t) => t.step === 57);
           if (homeTokens.length === 0) return null;
 
@@ -285,16 +290,18 @@ export const LudoBoard: React.FC<LudoBoardProps> = ({
       {/* Center Home */}
       {renderCenterHome()}
 
-      {/* Active Moving Token Overlay (Step-by-step smooth jump) */}
+      {/* Active Moving Token Overlay (Smooth hopping animation) */}
       {isMoving && movingTokenInfo && (
-        <div
-          className="absolute pointer-events-none transition-all duration-150 ease-out z-50"
+        <motion.div
+          className="absolute pointer-events-none transition-all duration-140 ease-out z-50 flex items-center justify-center"
           style={{
             width: `${100 / 15}%`,
             height: `${100 / 15}%`,
             top: `${(movingTokenInfo.currentCoord.row / 15) * 100}%`,
             left: `${(movingTokenInfo.currentCoord.col / 15) * 100}%`,
           }}
+          animate={{ scale: [1, 1.25, 1], y: [0, -6, 0] }}
+          transition={{ duration: 0.14, ease: 'easeInOut' }}
         >
           <Token
             tokenId={movingTokenInfo.tokenId}
@@ -305,7 +312,7 @@ export const LudoBoard: React.FC<LudoBoardProps> = ({
             isMoving={true}
             size="normal"
           />
-        </div>
+        </motion.div>
       )}
 
       {/* Dramatic Capture / Cut Visual Impact Feedback */}
@@ -322,19 +329,19 @@ export const LudoBoard: React.FC<LudoBoardProps> = ({
           >
             {/* Impact Flash Shockwave */}
             <motion.div
-              initial={{ scale: 0.5, opacity: 1 }}
-              animate={{ scale: 2.4, opacity: 0 }}
+              initial={{ scale: 0.4, opacity: 1 }}
+              animate={{ scale: 2.8, opacity: 0 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.4, ease: 'easeOut' }}
-              className="absolute w-full h-full rounded-full bg-red-500/60 border-2 border-amber-300"
+              className="absolute w-full h-full rounded-full bg-red-500/70 border-2 border-amber-300 shadow-xl shadow-red-500/50"
             />
 
-            {/* "CUT!" / "OUT!" badge */}
+            {/* "CUT!" badge */}
             <motion.div
               initial={{ scale: 0.2, y: 0, opacity: 0 }}
-              animate={{ scale: [0.2, 1.25, 1], y: -16, opacity: 1 }}
+              animate={{ scale: [0.2, 1.3, 1], y: -18, opacity: 1 }}
               exit={{ opacity: 0, scale: 0.8 }}
-              transition={{ duration: 0.45, ease: 'backOut' }}
+              transition={{ duration: 0.42, ease: 'backOut' }}
               className="absolute -top-3 z-50 bg-gradient-to-r from-red-600 to-amber-500 text-white font-black text-[10px] sm:text-xs px-2 py-0.5 rounded-full shadow-xl border border-white tracking-wider flex items-center gap-0.5 whitespace-nowrap"
             >
               <Zap className="w-3 h-3 fill-amber-300 text-amber-300" />
@@ -345,12 +352,12 @@ export const LudoBoard: React.FC<LudoBoardProps> = ({
             <motion.div
               initial={{ scale: 1, rotate: 0 }}
               animate={{
-                scale: [1, 1.3, 0.4, 0],
+                scale: [1, 1.35, 0.3, 0],
                 rotate: [0, -30, 180, 360],
-                y: [0, -10, 20],
-                opacity: [1, 1, 0.6, 0],
+                y: [0, -12, 24],
+                opacity: [1, 1, 0.5, 0],
               }}
-              transition={{ duration: 0.48, ease: 'easeInOut' }}
+              transition={{ duration: 0.45, ease: 'easeInOut' }}
               className="w-[90%] h-[90%] flex items-center justify-center"
             >
               <Token
